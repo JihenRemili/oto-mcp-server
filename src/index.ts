@@ -68,7 +68,7 @@ async function otoRequest(
 function createServer(env: OtoEnv) {
 	const server = new McpServer({
 		name: "OTO MCP Server",
-		version: "1.0.0",
+		version: "1.1.0",
 	});
 
 	server.registerTool(
@@ -81,6 +81,42 @@ function createServer(env: OtoEnv) {
 		async () => {
 			try {
 				const data = await otoRequest(env, "accountInfo");
+
+				return {
+					content: [
+						{
+							type: "text",
+							text: JSON.stringify(data, null, 2),
+						},
+					],
+				};
+			} catch (error) {
+				return {
+					content: [
+						{
+							type: "text",
+							text:
+								error instanceof Error
+									? error.message
+									: "Unknown OTO API error",
+						},
+					],
+					isError: true,
+				};
+			}
+		},
+	);
+
+	server.registerTool(
+		"oto_orders",
+		{
+			description:
+				"Get recent orders from the connected OTO account. Read-only.",
+			inputSchema: z.object({}),
+		},
+		async () => {
+			try {
+				const data = await otoRequest(env, "orders");
 
 				return {
 					content: [
