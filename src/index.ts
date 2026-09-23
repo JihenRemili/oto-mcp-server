@@ -68,14 +68,14 @@ async function otoRequest(
 function createServer(env: OtoEnv) {
 	const server = new McpServer({
 		name: "OTO MCP Server",
-		version: "1.1.0",
+		version: "1.2.0",
 	});
 
 	server.registerTool(
 		"oto_account_info",
 		{
 			description:
-				"Get the connected OTO account information. Read-only.",
+				"Get connected OTO account information. Read-only.",
 			inputSchema: z.object({}),
 		},
 		async () => {
@@ -111,12 +111,78 @@ function createServer(env: OtoEnv) {
 		"oto_orders",
 		{
 			description:
-				"Get recent orders from the connected OTO account. Read-only.",
-			inputSchema: z.object({}),
+				"Read orders from OTO with pagination, date filters "
+				+ "and status filtering. OTO currently returns older "
+				+ "orders on the first page. To find the newest orders, "
+				+ "check the total page count in the response, then "
+				+ "request the last page and sort those orders by date "
+				+ "descending. Alternatively, filter by recent dates. "
+				+ "Maximum 100 orders per page. Read-only.",
+
+			inputSchema: z.object({
+				page: z.number()
+					.int()
+					.min(1)
+					.default(1)
+					.describe("Page number, starting at 1."),
+
+				perPage: z.number()
+					.int()
+					.min(1)
+					.max(100)
+					.default(100)
+					.describe("Number of orders per page, maximum 100."),
+
+				minDate: z.string()
+					.regex(/^\d{4}-\d{2}-\d{2}$/)
+					.optional()
+					.describe(
+						"Starting order creation date, YYYY-MM-DD."
+					),
+
+				maxDate: z.string()
+					.regex(/^\d{4}-\d{2}-\d{2}$/)
+					.optional()
+					.describe(
+						"Ending order creation date, YYYY-MM-DD."
+					),
+
+				status: z.string()
+					.optional()
+					.describe(
+						"Optional order status, such as delivered."
+					),
+			}),
 		},
-		async () => {
+		async ({
+			page,
+			perPage,
+			minDate,
+			maxDate,
+			status,
+		}) => {
 			try {
-				const data = await otoRequest(env, "orders");
+				const params = new URLSearchParams();
+
+				params.set("page", String(page));
+				params.set("perPage", String(perPage));
+
+				if (minDate) {
+					params.set("minDate", minDate);
+				}
+
+				if (maxDate) {
+					params.set("maxDate", maxDate);
+				}
+
+				if (status) {
+					params.set("status", status);
+				}
+
+				const data = await otoRequest(
+					env,
+					`orders?${params.toString()}`,
+				);
 
 				return {
 					content: [
