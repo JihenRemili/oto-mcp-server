@@ -214,6 +214,24 @@ function createServer(env: OtoEnv) {
 
 export default {
 	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+		const secret = (env as Env & {
+			MCP_API_KEY?: string;
+		}).MCP_API_KEY;
+
+		if (!secret) {
+			return new Response("Server configuration error", {
+				status: 503,
+			});
+		}
+
+		const providedKey = request.headers.get("x-api-key");
+
+		if (!providedKey || providedKey !== secret) {
+			return new Response("Access denied", {
+				status: 403,
+			});
+		}
+
 		const handler = createMcpHandler(() =>
 			createServer(env as OtoEnv),
 		);
